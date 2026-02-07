@@ -15,7 +15,7 @@
         button { cursor: pointer; border-radius: 5px; border: 1px solid #ddd; padding: 5px 12px; }
         #checkout-btn { background: #4caf50; color: white; border: none; padding: 15px; width: 100%; font-size: 18px; border-radius: 10px; margin-top: 20px; }
         /* เพิ่มสไตล์ปุ่มลบสีแดง */
-        .del-btn { background-color: #ff5252; color: white; border: none; margin-left: 5px; }
+        .del-btn { background-color: #ff2c2c; color: white; border: none; margin-left: 5px; }
     </style>
 </head>
 <body>
@@ -38,8 +38,8 @@
         <h3>🛒 รายการที่เลือก</h3>
         <div id="cart-list"></div>
         <hr>
-        <h4>ยอดรวม: <span id="total">0</span> บาท</h4>
-        <p>ชื่อผู้รับ: <span id="user-name">กำลังโหลด...</span></p>
+        <h4>ยอดรวม : <span id="total">0</span> บาท</h4>
+        <p>ชื่อผู้รับ : <span id="user-name">กำลังโหลด...</span></p>
         <textarea id="address" placeholder="กรอกที่อยู่จัดส่งสินค้า..." style="width:100%; height:100px; padding:10px; border-radius:8px; border:1px solid #ccc;"></textarea>
         <button id="checkout-btn" onclick="sendOrder()">✅ ยืนยันการสั่งซื้อ</button>
         <button onclick="closeCart()" style="width:100%; margin-top:10px; background:none; border:none; color:gray;">กลับไปเลือกเพิ่ม</button>
@@ -137,7 +137,7 @@
 
         async function sendOrder() {
             const addr = document.getElementById('address').value;
-            if (!addr) return Swal.fire({ icon: 'warning', title: 'แจ้งเตือน', text: 'กรุณากรอกที่อยู่ด้วยครับ', confirmButtonColor: '#8d6e63' });
+            if (!addr) return Swal.fire({ icon: 'warning', title: 'แจ้งเตือน', text: 'กรุณากรอกที่อยู่ด้วยค่ะ', confirmButtonColor: '#8d6e63' });
             if (cart.length === 0) return Swal.fire({ icon: 'warning', title: 'ตะกร้าว่าง', text: 'ยังไม่มีสินค้าในตะกร้า', confirmButtonColor: '#8d6e63' });
 
             Swal.fire({
