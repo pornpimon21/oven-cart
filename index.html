@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Little Oven - ตะกร้าสินค้า</title>
+    <title>B Bake Pang - ตะกร้าสินค้า</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
         body { font-family: 'Kanit', sans-serif; padding: 20px; background-color: #fdf5f0; }
@@ -17,7 +18,7 @@
 </head>
 <body>
 
-    <h2>🍰 เมนู Little Oven</h2>
+    <h2>🍰 เมนู B Bake Pang</h2>
     
     <div class="product-card">
         <div><strong>บราวนี่</strong><br><small>ราคา 25 บาท</small></div>
@@ -43,22 +44,19 @@
     </div>
 
     <script>
-        // 1. URL Webhook เดิมของคุณ
         const WEBHOOK_URL = "https://hook.eu1.make.com/qq81k3lxscdq67yy5y7soxmvt7d6wl3d"; 
-        
-        // 2. LIFF ID เดิมของคุณ
         const MY_LIFF_ID = "2009070223-6etDkSk2";
 
         let cart = [];
         let userName = "";
-        let lineUserId = ""; // เพิ่มตัวแปรเก็บ ID
+        let lineUserId = ""; 
 
         async function initLIFF() {
             await liff.init({ liffId: MY_LIFF_ID });
             if (liff.isLoggedIn()) {
                 const profile = await liff.getProfile();
                 userName = profile.displayName;
-                lineUserId = profile.userId; // ดึง userId มาเก็บไว้
+                lineUserId = profile.userId; 
                 document.getElementById('user-name').innerText = userName;
             } else {
                 liff.login();
@@ -70,6 +68,12 @@
             let item = cart.find(i => i.name === name);
             if (item) { item.qty++; } else { cart.push({ name, price, qty: 1 }); }
             document.getElementById('count').innerText = cart.reduce((s, i) => s + i.qty, 0);
+            
+            // เพิ่มลูกเล่น: แจ้งเตือนเล็กๆ มุมขวาบนเวลาหยิบของ
+            const Toast = Swal.mixin({
+                toast: true, position: 'top-end', showConfirmButton: false, timer: 1500, timerProgressBar: true
+            });
+            Toast.fire({ icon: 'success', title: 'เพิ่ม ' + name + ' แล้ว' });
         }
 
         function showCart() {
@@ -102,26 +106,48 @@
 
         async function sendOrder() {
             const addr = document.getElementById('address').value;
-            if (!addr) return alert("กรุณากรอกที่อยู่ด้วยครับ");
-            if (cart.length === 0) return alert("ยังไม่มีสินค้าในตะกร้า");
+            // เปลี่ยน alert เป็น Swal แบบแจ้งเตือน
+            if (!addr) return Swal.fire({ icon: 'warning', title: 'แจ้งเตือน', text: 'กรุณากรอกที่อยู่ด้วยครับ', confirmButtonColor: '#8d6e63' });
+            if (cart.length === 0) return Swal.fire({ icon: 'warning', title: 'ตะกร้าว่าง', text: 'ยังไม่มีสินค้าในตะกร้า', confirmButtonColor: '#8d6e63' });
+
+            // โชว์ Loading ระหว่างรอส่ง
+            Swal.fire({
+                title: 'กำลังส่งออเดอร์...',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading() }
+            });
 
             const orderData = {
                 customer: userName,
-                userId: lineUserId, // ส่ง userId ไปที่ Make แล้ว!
+                userId: lineUserId, 
                 items: cart.map(i => `${i.name}(${i.qty})`).join(", "),
                 total: document.getElementById('total').innerText,
                 address: addr
             };
 
-            const res = await fetch(WEBHOOK_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(orderData)
-            });
+            try {
+                const res = await fetch(WEBHOOK_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(orderData)
+                });
 
-            if (res.ok) {
-                alert("ส่งคำสั่งซื้อเรียบร้อยแล้ว!");
-                liff.closeWindow();
+                if (res.ok) {
+                    // 2. เปลี่ยน Alert เป็นแบบสวยงาม (ไม่มีชื่อ GitHub)
+                    Swal.fire({
+                        title: 'สำเร็จ!',
+                        text: 'ได้รับออเดอร์แล้ว รอแจ้งเลขพัสดุนะคะ 🍪',
+                        icon: 'success',
+                        confirmButtonText: 'ตกลง',
+                        confirmButtonColor: '#8d6e63'
+                    }).then(() => {
+                        liff.closeWindow(); // ปิดหน้าต่างเมื่อกดตกลง
+                    });
+                } else {
+                    Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'ส่งข้อมูลไม่สำเร็จ โปรดลองใหม่' });
+                }
+            } catch (err) {
+                Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'เชื่อมต่อไม่ได้: ' + err });
             }
         }
     </script>
