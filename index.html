@@ -11,9 +11,11 @@
         .product-card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
         .cart-btn { position: fixed; bottom: 20px; right: 20px; background: #8d6e63; color: white; padding: 15px 25px; border-radius: 30px; border: none; font-size: 18px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; padding: 20px; box-sizing: border-box; overflow-y: auto; }
-        .item-row { display: flex; justify-content: space-between; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .item-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
         button { cursor: pointer; border-radius: 5px; border: 1px solid #ddd; padding: 5px 12px; }
         #checkout-btn { background: #4caf50; color: white; border: none; padding: 15px; width: 100%; font-size: 18px; border-radius: 10px; margin-top: 20px; }
+        /* เพิ่มสไตล์ปุ่มลบสีแดง */
+        .del-btn { background-color: #ff5252; color: white; border: none; margin-left: 5px; }
     </style>
 </head>
 <body>
@@ -67,9 +69,8 @@
         function addToCart(name, price) {
             let item = cart.find(i => i.name === name);
             if (item) { item.qty++; } else { cart.push({ name, price, qty: 1 }); }
-            document.getElementById('count').innerText = cart.reduce((s, i) => s + i.qty, 0);
+            updateCartIcon();
             
-            // เพิ่มลูกเล่น: แจ้งเตือนเล็กๆ มุมขวาบนเวลาหยิบของ
             const Toast = Swal.mixin({
                 toast: true, position: 'top-end', showConfirmButton: false, timer: 1500, timerProgressBar: true
             });
@@ -84,10 +85,15 @@
                 sum += (item.price * item.qty);
                 list.innerHTML += `
                     <div class="item-row">
-                        <span>${item.name} x ${item.qty}</span>
+                        <div>
+                            <strong>${item.name}</strong><br>
+                            <small>${item.price} x ${item.qty} = ${item.price * item.qty} บ.</small>
+                        </div>
                         <div>
                             <button onclick="updateQty(${idx}, -1)">-</button>
+                            <span style="margin:0 5px;">${item.qty}</span>
                             <button onclick="updateQty(${idx}, 1)">+</button>
+                            <button class="del-btn" onclick="removeItem(${idx})">🗑️</button>
                         </div>
                     </div>`;
             });
@@ -99,6 +105,31 @@
             cart[idx].qty += amt;
             if (cart[idx].qty <= 0) cart.splice(idx, 1);
             showCart();
+            updateCartIcon();
+        }
+
+        // ฟังก์ชันใหม่: ลบสินค้าทันที
+        function removeItem(idx) {
+            // ถามก่อนลบ เพื่อกันพลาด
+            Swal.fire({
+                title: 'ลบรายการนี้?',
+                text: "คุณต้องการลบ " + cart[idx].name + " ออกจากตะกร้าใช่ไหม?",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ff5252',
+                cancelButtonColor: '#aaa',
+                confirmButtonText: 'ลบเลย',
+                cancelButtonText: 'ยกเลิก'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    cart.splice(idx, 1); // ลบออกจาก Array
+                    showCart(); // อัปเดตหน้าจอ
+                    updateCartIcon(); // อัปเดตตัวเลข
+                }
+            });
+        }
+
+        function updateCartIcon() {
             document.getElementById('count').innerText = cart.reduce((s, i) => s + i.qty, 0);
         }
 
@@ -106,11 +137,9 @@
 
         async function sendOrder() {
             const addr = document.getElementById('address').value;
-            // เปลี่ยน alert เป็น Swal แบบแจ้งเตือน
             if (!addr) return Swal.fire({ icon: 'warning', title: 'แจ้งเตือน', text: 'กรุณากรอกที่อยู่ด้วยครับ', confirmButtonColor: '#8d6e63' });
             if (cart.length === 0) return Swal.fire({ icon: 'warning', title: 'ตะกร้าว่าง', text: 'ยังไม่มีสินค้าในตะกร้า', confirmButtonColor: '#8d6e63' });
 
-            // โชว์ Loading ระหว่างรอส่ง
             Swal.fire({
                 title: 'กำลังส่งออเดอร์...',
                 allowOutsideClick: false,
@@ -133,7 +162,6 @@
                 });
 
                 if (res.ok) {
-                    // 2. เปลี่ยน Alert เป็นแบบสวยงาม (ไม่มีชื่อ GitHub)
                     Swal.fire({
                         title: 'สำเร็จ!',
                         text: 'ได้รับออเดอร์แล้ว รอแจ้งเลขพัสดุนะคะ 🍪',
@@ -141,7 +169,7 @@
                         confirmButtonText: 'ตกลง',
                         confirmButtonColor: '#8d6e63'
                     }).then(() => {
-                        liff.closeWindow(); // ปิดหน้าต่างเมื่อกดตกลง
+                        liff.closeWindow();
                     });
                 } else {
                     Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'ส่งข้อมูลไม่สำเร็จ โปรดลองใหม่' });
