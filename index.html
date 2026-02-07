@@ -15,7 +15,7 @@
         .item-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
         button { cursor: pointer; border-radius: 5px; border: 1px solid #ddd; padding: 5px 12px; }
         
-        /* ✅ ปุ่มชำระเงินสีส้มสดใส */
+        /* ปุ่มชำระเงินสีส้ม */
         #checkout-btn { 
             background: #ff9800; 
             color: white; 
@@ -71,12 +71,14 @@
 
     <script>
         // --- ⚙️ ตั้งค่าระบบ (Config) ---
-        const WEBHOOK_URL = "https://hook.eu1.make.com/qq81k3lxscdq67yy5y7soxmvt7d6wl3d"; // ลิงก์ Make ของคุณ
-        const MY_LIFF_ID = "2009070223-6etDkSk2"; // LIFF ID ของคุณ
-        const PROMPTPAY_ID = "0970100515"; // ✅ แก้เป็นเบอร์คุณพรพิมลแล้ว
+        const WEBHOOK_URL = "https://hook.eu1.make.com/qq81k3lxscdq67yy5y7soxmvt7d6wl3d"; 
+        const MY_LIFF_ID = "2009070223-6etDkSk2"; 
+        
+        // ⚠️⚠️ แก้บรรทัดนี้: ใส่เลขบัตรประชาชน 13 หลัก แทน xxxxx ⚠️⚠️
+        const PROMPTPAY_ID = ""; 
 
         let cart = [];
-        let userName = "";
+        let userName = "1539900822807";
         let lineUserId = ""; 
 
         // --- 🟢 เริ่มต้น LIFF ---
@@ -128,10 +130,14 @@
         }
 
         function updateQty(idx, amt) {
-            cart[idx].qty += amt;
-            if (cart[idx].qty <= 0) cart.splice(idx, 1);
-            showCart();
-            updateCartIcon();
+            // ✅ แก้ไขให้ถูกต้องแล้วครับ
+            if (amt === -1 && cart[idx].qty === 1) {
+                removeItem(idx); // ถ้าเหลือ 1 ชิ้นแล้วกดลบ ให้ถามก่อน
+            } else {
+                cart[idx].qty += amt;
+                showCart();
+                updateCartIcon();
+            }
         }
 
         function removeItem(idx) {
@@ -152,10 +158,9 @@
             if (!addr) return Swal.fire({ icon: 'warning', title: 'แจ้งเตือน', text: 'กรุณากรอกที่อยู่ด้วยค่ะ', confirmButtonColor: '#ff9800' });
             if (cart.length === 0) return Swal.fire({ icon: 'warning', title: 'ตะกร้าว่าง', text: 'เลือกขนมก่อนนะคะ', confirmButtonColor: '#ff9800' });
 
-            // สร้างเลข Order ID (สุ่มเลข 6 หลัก)
             const orderId = '#' + Math.floor(100000 + Math.random() * 900000);
             
-            // ✅ สร้างลิงก์ QR Code (PromptPay) แบบมียอดเงิน
+            // ✅ สร้างลิงก์ QR Code (PromptPay) รองรับทั้งเบอร์และเลขบัตรประชาชน
             const qrUrl = `https://promptpay.io/${PROMPTPAY_ID}/${totalAmount}`;
 
             // 1. แสดง QR Code ให้ลูกค้าสแกนจ่าย
@@ -167,7 +172,7 @@
                         <small style="color:#888;">เลขคำสั่งซื้อ : ${orderId}</small>
                     </div>
                     <img src="${qrUrl}" style="width:200px; margin:20px 0; border:2px solid #eee; border-radius:10px; padding:5px;">
-                    <p style="font-size:16px;">พร้อมเพย์ : <b>${PROMPTPAY_ID}</b></p>
+                    <p style="font-size:16px;">พร้อมเพย์ (บัตรปชช.) : <b>${PROMPTPAY_ID}</b></p>
                     <p style="color:#666;">(คุณพรพิมล)</p>
                     <hr style="margin: 15px 0;">
                     <p style="font-size:14px; color:#c62828;">*เมื่อโอนเงินเสร็จแล้ว กดปุ่มด้านล่างเพื่อส่งสลิป*</p>
@@ -181,7 +186,6 @@
                 width: 350
             });
 
-            // ถ้าลูกค้ากดยกเลิก
             if (!payment.isConfirmed) return;
 
             // 2. ถ้าลูกค้ากด "โอนแล้ว" -> ส่งข้อมูลไป Make
@@ -197,13 +201,11 @@
             };
 
             try {
-                // ยิง Webhook ไปที่ Make
                 const res = await fetch(WEBHOOK_URL, {
                     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(orderData)
                 });
 
                 if (res.ok) {
-                    // 3. สำเร็จ! แจ้งเตือนลูกค้าให้ส่งรูปสลิปในแชท
                     await Swal.fire({
                         title: 'บันทึกออเดอร์แล้ว! 🎉',
                         html: `
@@ -218,8 +220,6 @@
                         confirmButtonText: '📷 กดเพื่อกลับไปส่งสลิป',
                         confirmButtonColor: '#4caf50'
                     });
-                    
-                    // ปิดหน้าเว็บ LIFF
                     liff.closeWindow(); 
                 } else {
                     Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'ส่งข้อมูลไม่สำเร็จ กรุณาลองใหม่' });
