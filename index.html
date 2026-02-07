@@ -3,93 +3,124 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ตะกร้าสินค้า Little Oven</title>
+    <title>Little Oven - ตะกร้าสินค้า</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
-        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #fdf2f2; padding: 20px; color: #5d4037; }
-        .cart-card { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.05); text-align: center; }
-        .qty-control { display: flex; justify-content: center; align-items: center; margin: 20px 0; }
-        .btn-round { background: #8d6e63; color: white; border: none; width: 40px; height: 40px; border-radius: 50%; font-size: 20px; font-weight: bold; cursor: pointer; }
-        .qty-num { font-size: 24px; margin: 0 20px; font-weight: bold; }
-        .confirm-btn { background: #5d4037; color: white; width: 100%; padding: 15px; border: none; border-radius: 30px; font-size: 18px; margin-top: 20px; cursor: pointer; font-weight: bold; }
-        input { width: 100%; padding: 12px; margin-top: 15px; border-radius: 10px; border: 1px solid #ddd; box-sizing: border-box; }
-        .total-section { font-size: 20px; margin: 15px 0; border-top: 1px solid #eee; padding-top: 15px; }
+        body { font-family: 'Kanit', sans-serif; padding: 20px; background-color: #fdf5f0; }
+        .product-card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
+        .cart-btn { position: fixed; bottom: 20px; right: 20px; background: #8d6e63; color: white; padding: 15px 25px; border-radius: 30px; border: none; font-size: 18px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; padding: 20px; box-sizing: border-box; overflow-y: auto; }
+        .item-row { display: flex; justify-content: space-between; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        button { cursor: pointer; border-radius: 5px; border: 1px solid #ddd; padding: 5px 12px; }
+        #checkout-btn { background: #4caf50; color: white; border: none; padding: 15px; width: 100%; font-size: 18px; border-radius: 10px; margin-top: 20px; }
     </style>
 </head>
 <body>
-    <div class="cart-card">
-        <h2 id="p-name">กำลังโหลดสินค้า...</h2>
-        <p>ราคาชิ้นละ <span id="p-price">0</span> บาท</p>
-        
-        <div class="qty-control">
-            <button class="btn-round" onclick="updateQty(-1)">-</button>
-            <span id="qty-display" class="qty-num">1</span>
-            <button class="btn-round" onclick="updateQty(1)">+</button>
-        </div>
 
-        <div class="total-section">
-            ยอดรวม: <b><span id="total-display">0</span> บาท</b>
-        </div>
+    <h2>🍰 เมนู Little Oven</h2>
+    
+    <div class="product-card">
+        <div><strong>บราวนี่</strong><br><small>ราคา 25 บาท</small></div>
+        <button onclick="addToCart('บราวนี่', 25)">เพิ่มลงตะกร้า</button>
+    </div>
 
-        <input type="text" id="user-address" placeholder="พิมพ์ชื่อ-ที่อยู่ และเบอร์โทร">
-        <button class="confirm-btn" onclick="submitOrder()">ยืนยันการสั่งซื้อ</button>
+    <div class="product-card">
+        <div><strong>คุกกี้</strong><br><small>ราคา 35 บาท</small></div>
+        <button onclick="addToCart('คุกกี้', 35)">เพิ่มลงตะกร้า</button>
+    </div>
+
+    <button class="cart-btn" onclick="showCart()">🛒 ตะกร้า (<span id="count">0</span>)</button>
+
+    <div id="cart-modal" class="modal">
+        <h3>🛒 รายการที่เลือก</h3>
+        <div id="cart-list"></div>
+        <hr>
+        <h4>ยอดรวม: <span id="total">0</span> บาท</h4>
+        <p>ชื่อผู้รับ: <span id="user-name">กำลังโหลด...</span></p>
+        <textarea id="address" placeholder="กรอกที่อยู่จัดส่งสินค้า..." style="width:100%; height:100px; padding:10px; border-radius:8px; border:1px solid #ccc;"></textarea>
+        <button id="checkout-btn" onclick="sendOrder()">✅ ยืนยันการสั่งซื้อ</button>
+        <button onclick="closeCart()" style="width:100%; margin-top:10px; background:none; border:none; color:gray;">กลับไปเลือกเพิ่ม</button>
     </div>
 
     <script>
-        let currentQty = 1;
-        let unitPrice = 0;
-        let productName = "";
+        // 1. ใส่ URL จาก Make (วงกลมชมพู) ของคุณที่นี่
+        const WEBHOOK_URL = "https://hook.eu1.make.com/qq81k3lxscdq67yy5y7soxmvt7d6wl3d"; 
+        
+        // 2. ใส่ LIFF ID ของคุณที่นี่
+        const MY_LIFF_ID = "2009070223-6etDkSk2";
 
-        async function main() {
-            // 1. เชื่อมต่อกับ LINE LIFF (ต้องเอา ID มาใส่ทีหลัง)
-            await liff.init({ liffId: "2009070223-6etDkSk2" });
+        let cart = [];
+        let userName = "";
 
-            // 2. ดึงค่าสินค้าจากปุ่มที่กดมา (URL)
-            const urlParams = new URLSearchParams(window.location.search);
-            productName = urlParams.get('item') || "สินค้าทั่วไป";
-            unitPrice = parseInt(urlParams.get('price')) || 0;
+        async function initLIFF() {
+            await liff.init({ liffId: MY_LIFF_ID });
+            if (liff.isLoggedIn()) {
+                const profile = await liff.getProfile();
+                userName = profile.displayName;
+                document.getElementById('user-name').innerText = userName;
+            } else {
+                liff.login();
+            }
+        }
+        initLIFF();
 
-            document.getElementById('p-name').innerText = productName;
-            document.getElementById('p-price').innerText = unitPrice;
-            calculateTotal();
+        function addToCart(name, price) {
+            let item = cart.find(i => i.name === name);
+            if (item) { item.qty++; } else { cart.push({ name, price, qty: 1 }); }
+            document.getElementById('count').innerText = cart.reduce((s, i) => s + i.qty, 0);
         }
 
-        function updateQty(n) {
-            currentQty += n;
-            if (currentQty < 1) currentQty = 1;
-            document.getElementById('qty-display').innerText = currentQty;
-            calculateTotal();
+        function showCart() {
+            const list = document.getElementById('cart-list');
+            list.innerHTML = "";
+            let sum = 0;
+            cart.forEach((item, idx) => {
+                sum += (item.price * item.qty);
+                list.innerHTML += `
+                    <div class="item-row">
+                        <span>${item.name} x ${item.qty}</span>
+                        <div>
+                            <button onclick="updateQty(${idx}, -1)">-</button>
+                            <button onclick="updateQty(${idx}, 1)">+</button>
+                        </div>
+                    </div>`;
+            });
+            document.getElementById('total').innerText = sum;
+            document.getElementById('cart-modal').style.display = "block";
         }
 
-        function calculateTotal() {
-            document.getElementById('total-display').innerText = currentQty * unitPrice;
+        function updateQty(idx, amt) {
+            cart[idx].qty += amt;
+            if (cart[idx].qty <= 0) cart.splice(idx, 1);
+            showCart();
+            document.getElementById('count').innerText = cart.reduce((s, i) => s + i.qty, 0);
         }
 
-        async function submitOrder() {
-            const address = document.getElementById('user-address').value;
-            if (!address) return alert("กรุณากรอกที่อยู่ด้วยครับ");
+        function closeCart() { document.getElementById('cart-modal').style.display = "none"; }
 
-            const profile = await liff.getProfile();
-            
-            // 3. ส่งข้อมูลไปที่ Make (ต้องเอา URL Webhook มาใส่)
-            const makeWebhookUrl = "https://hook.eu1.make.com/qq81k3lxscdq67yy5y7soxmvt7d6wl3d";
-            
-            fetch(makeWebhookUrl, {
+        async function sendOrder() {
+            const addr = document.getElementById('address').value;
+            if (!addr) return alert("กรุณากรอกที่อยู่ด้วยครับ");
+            if (cart.length === 0) return alert("ยังไม่มีสินค้าในตะกร้า");
+
+            const orderData = {
+                customer: userName,
+                items: cart.map(i => `${i.name}(${i.qty})`).join(", "),
+                total: document.getElementById('total').innerText,
+                address: addr
+            };
+
+            const res = await fetch(WEBHOOK_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    customer: profile.displayName,
-                    item: productName,
-                    quantity: currentQty,
-                    total: currentQty * unitPrice,
-                    address: address
-                })
-            }).then(() => {
-                alert("บันทึกออเดอร์เรียบร้อย!");
-                liff.closeWindow(); // ปิดหน้าต่างตะกร้า
+                body: JSON.stringify(orderData)
             });
+
+            if (res.ok) {
+                alert("ส่งคำสั่งซื้อเรียบร้อยแล้ว!");
+                liff.closeWindow();
+            }
         }
-        main();
     </script>
 </body>
 </html>
