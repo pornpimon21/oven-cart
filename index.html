@@ -6,6 +6,7 @@
     <title>B Bake Pang - ตะกร้าสินค้า</title>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         body { font-family: 'Kanit', sans-serif; padding: 20px; background-color: #fdf5f0; }
         .product-card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
@@ -13,15 +14,27 @@
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; padding: 20px; box-sizing: border-box; overflow-y: auto; }
         .item-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
         button { cursor: pointer; border-radius: 5px; border: 1px solid #ddd; padding: 5px 12px; }
-        #checkout-btn { background: #4caf50; color: white; border: none; padding: 15px; width: 100%; font-size: 18px; border-radius: 10px; margin-top: 20px; }
         
-        /* ✅ แก้ไขสไตล์ปุ่มลบ ให้เป็นสีพาสเทลนวลๆ */
+        /* ✅ เปลี่ยนปุ่มยืนยัน เป็นปุ่มชำระเงิน (สีส้ม) */
+        #checkout-btn { 
+            background: #ff9800; /* สีส้ม */
+            color: white; 
+            border: none; 
+            padding: 15px; 
+            width: 100%; 
+            font-size: 18px; 
+            font-weight: bold;
+            border-radius: 10px; 
+            margin-top: 20px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+        
         .del-btn { 
-            background-color: #ffebee; /* พื้นหลังชมพูจาง */
-            color: #c62828;            /* ตัวหนังสือแดงเข้ม */
-            border: 1px solid #ffcdd2; /* ขอบชมพู */
-            border-radius: 15px;       /* ขอบมน */
-            padding: 2px 10px;         /* ขนาดกระทัดรัด */
+            background-color: #ffebee; 
+            color: #c62828;            
+            border: 1px solid #ffcdd2; 
+            border-radius: 15px;       
+            padding: 2px 10px;         
             margin-left: 5px; 
             font-size: 14px;
         }
@@ -50,13 +63,16 @@
         <h4>ยอดรวม : <span id="total">0</span> บาท</h4>
         <p>ชื่อผู้รับ : <span id="user-name">กำลังโหลด...</span></p>
         <textarea id="address" placeholder="กรอกที่อยู่จัดส่งสินค้า..." style="width:100%; height:100px; padding:10px; border-radius:8px; border:1px solid #ccc;"></textarea>
-        <button id="checkout-btn" onclick="sendOrder()">✅ ยืนยันการสั่งซื้อ</button>
+        
+        <button id="checkout-btn" onclick="processPayment()">💳 ชำระเงิน</button>
+        
         <button onclick="closeCart()" style="width:100%; margin-top:10px; background:none; border:none; color:gray;">กลับไปเลือกเพิ่ม</button>
     </div>
 
     <script>
         const WEBHOOK_URL = "https://hook.eu1.make.com/qq81k3lxscdq67yy5y7soxmvt7d6wl3d"; 
         const MY_LIFF_ID = "2009070223-6etDkSk2";
+        const PROMPTPAY_ID = "0812345678"; // ⚠️ อย่าลืมแก้เบอร์ตรงนี้นะครับ
 
         let cart = [];
         let userName = "";
@@ -79,10 +95,7 @@
             let item = cart.find(i => i.name === name);
             if (item) { item.qty++; } else { cart.push({ name, price, qty: 1 }); }
             updateCartIcon();
-            
-            const Toast = Swal.mixin({
-                toast: true, position: 'top-end', showConfirmButton: false, timer: 1500, timerProgressBar: true
-            });
+            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500, timerProgressBar: true });
             Toast.fire({ icon: 'success', title: 'เพิ่ม ' + name + ' แล้ว' });
         }
 
@@ -94,10 +107,7 @@
                 sum += (item.price * item.qty);
                 list.innerHTML += `
                     <div class="item-row">
-                        <div>
-                            <strong>${item.name}</strong><br>
-                            <small>${item.price} x ${item.qty} = ${item.price * item.qty} บ.</small>
-                        </div>
+                        <div><strong>${item.name}</strong><br><small>${item.price} x ${item.qty} = ${item.price * item.qty} บ.</small></div>
                         <div>
                             <button onclick="updateQty(${idx}, -1)">-</button>
                             <span style="margin:0 5px;">${item.qty}</span>
@@ -119,67 +129,83 @@
 
         function removeItem(idx) {
             Swal.fire({
-                title: 'ลบรายการนี้?',
-                text: "ต้องการลบ " + cart[idx].name + " ออกจากตะกร้า?",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#ff8a80', // ปรับสีปุ่มยืนยันให้เข้าธีม
-                cancelButtonColor: '#aaa',
-                confirmButtonText: 'ลบเลย',
-                cancelButtonText: 'ยกเลิก'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    cart.splice(idx, 1); 
-                    showCart(); 
-                    updateCartIcon(); 
-                }
-            });
+                title: 'ลบรายการนี้?', text: "ต้องการลบ " + cart[idx].name + " หรือไม่?", icon: 'warning',
+                showCancelButton: true, confirmButtonColor: '#ff8a80', cancelButtonColor: '#aaa', confirmButtonText: 'ลบเลย', cancelButtonText: 'ยกเลิก'
+            }).then((result) => { if (result.isConfirmed) { cart.splice(idx, 1); showCart(); updateCartIcon(); } });
         }
 
-        function updateCartIcon() {
-            document.getElementById('count').innerText = cart.reduce((s, i) => s + i.qty, 0);
-        }
-
+        function updateCartIcon() { document.getElementById('count').innerText = cart.reduce((s, i) => s + i.qty, 0); }
         function closeCart() { document.getElementById('cart-modal').style.display = "none"; }
 
-        async function sendOrder() {
+        // ✅ ฟังก์ชันใหม่: ชำระเงิน -> แสดง QR -> ส่งข้อมูล
+        async function processPayment() {
             const addr = document.getElementById('address').value;
-            if (!addr) return Swal.fire({ icon: 'warning', title: 'แจ้งเตือน', text: 'กรุณากรอกที่อยู่ด้วยค่ะ', confirmButtonColor: '#8d6e63' });
-            if (cart.length === 0) return Swal.fire({ icon: 'warning', title: 'ตะกร้าว่าง', text: 'ยังไม่มีสินค้าในตะกร้า', confirmButtonColor: '#8d6e63' });
+            const totalAmount = document.getElementById('total').innerText;
 
-            Swal.fire({
-                title: 'กำลังส่งออเดอร์...',
-                allowOutsideClick: false,
-                didOpen: () => { Swal.showLoading() }
+            if (!addr) return Swal.fire({ icon: 'warning', title: 'แจ้งเตือน', text: 'กรุณากรอกที่อยู่ด้วยค่ะ', confirmButtonColor: '#ff9800' });
+            if (cart.length === 0) return Swal.fire({ icon: 'warning', title: 'ตะกร้าว่าง', text: 'เลือกขนมก่อนนะคะ', confirmButtonColor: '#ff9800' });
+
+            // สร้างเลข Order ID
+            const orderId = '#' + Math.floor(100000 + Math.random() * 900000);
+            
+            // สร้างลิงก์ QR Code อัตโนมัติ
+            const qrUrl = `https://promptpay.io/${PROMPTPAY_ID}/${totalAmount}`;
+
+            // 1. แสดง QR Code ให้ลูกค้าสแกน
+            const payment = await Swal.fire({
+                title: 'สแกนจ่ายเงิน',
+                html: `
+                    <div style="background:#f9f9f9; padding:10px; border-radius:10px;">
+                        <h2 style="color:#ff9800; margin:0;">฿ ${totalAmount}</h2>
+                        <small>เลขคำสั่งซื้อ: ${orderId}</small>
+                    </div>
+                    <img src="${qrUrl}" style="width:200px; margin:15px 0; border:1px solid #ddd; border-radius:5px;">
+                    <p>พร้อมเพย์: <b>${PROMPTPAY_ID}</b></p>
+                    <hr>
+                    <p style="font-size:14px; color:gray;">เมื่อโอนเงินเสร็จแล้ว<br>กดปุ่มด้านล่างเพื่อยืนยันและส่งสลิป</p>
+                `,
+                showCancelButton: true,
+                confirmButtonText: '✅ โอนแล้ว (แจ้งสลิป)',
+                cancelButtonText: 'ยกเลิก',
+                confirmButtonColor: '#4caf50',
+                cancelButtonColor: '#d33',
+                allowOutsideClick: false
             });
 
+            // ถ้ากดยกเลิก
+            if (!payment.isConfirmed) return;
+
+            // 2. ส่งข้อมูลไป Make (บันทึก Google Sheet)
+            Swal.fire({ title: 'กำลังบันทึกข้อมูล...', allowOutsideClick: false, didOpen: () => { Swal.showLoading() } });
+
             const orderData = {
+                orderId: orderId,
                 customer: userName,
                 userId: lineUserId, 
-                items: cart.map(i => `${i.name}(${i.qty})`).join(", "),
-                total: document.getElementById('total').innerText,
+                items: cart.map(i => `${i.name} (x${i.qty})`).join("\n"),
+                total: totalAmount,
                 address: addr
             };
 
             try {
                 const res = await fetch(WEBHOOK_URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(orderData)
+                    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(orderData)
                 });
 
                 if (res.ok) {
+                    // 3. สำเร็จ! แจ้งให้ลูกค้าส่งรูปสลิป
                     Swal.fire({
-                        title: 'สำเร็จ!',
-                        text: 'ได้รับออเดอร์แล้ว รอแจ้งเลขพัสดุนะคะ 🍪',
+                        title: 'บันทึกออเดอร์แล้ว!',
+                        html: 'ขั้นตอนสุดท้าย: <br><b>กรุณาส่งรูปสลิปเข้ามาในแชท</b><br>เพื่อให้ระบบตรวจสอบยอดเงินนะคะ',
                         icon: 'success',
-                        confirmButtonText: 'ตกลง',
-                        confirmButtonColor: '#8d6e63'
+                        confirmButtonText: '📷 กดส่งสลิปเลย',
+                        confirmButtonColor: '#4caf50'
                     }).then(() => {
-                        liff.closeWindow();
+                        // ปิดหน้าเว็บ และเปิดห้องแชทเพื่อให้ส่งรูป
+                        liff.closeWindow(); 
                     });
                 } else {
-                    Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'ส่งข้อมูลไม่สำเร็จ โปรดลองใหม่' });
+                    Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'ส่งข้อมูลไม่สำเร็จ' });
                 }
             } catch (err) {
                 Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'เชื่อมต่อไม่ได้: ' + err });
