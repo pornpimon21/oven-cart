@@ -15,9 +15,9 @@
         .item-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
         button { cursor: pointer; border-radius: 5px; border: 1px solid #ddd; padding: 5px 12px; }
         
-        /* ✅ เปลี่ยนปุ่มยืนยัน เป็นปุ่มชำระเงิน (สีส้ม) */
+        /* ✅ ปุ่มชำระเงินสีส้มสดใส */
         #checkout-btn { 
-            background: #ff9800; /* สีส้ม */
+            background: #ff9800; 
             color: white; 
             border: none; 
             padding: 15px; 
@@ -33,8 +33,8 @@
             background-color: #ffebee; 
             color: #c62828;            
             border: 1px solid #ffcdd2; 
-            border-radius: 15px;       
-            padding: 2px 10px;         
+            border-radius: 15px;        
+            padding: 2px 10px;          
             margin-left: 5px; 
             font-size: 14px;
         }
@@ -70,27 +70,34 @@
     </div>
 
     <script>
-        const WEBHOOK_URL = "https://hook.eu1.make.com/qq81k3lxscdq67yy5y7soxmvt7d6wl3d"; 
-        const MY_LIFF_ID = "2009070223-6etDkSk2";
-        const PROMPTPAY_ID = "0812345678"; // ⚠️ อย่าลืมแก้เบอร์ตรงนี้นะครับ
+        // --- ⚙️ ตั้งค่าระบบ (Config) ---
+        const WEBHOOK_URL = "https://hook.eu1.make.com/qq81k3lxscdq67yy5y7soxmvt7d6wl3d"; // ลิงก์ Make ของคุณ
+        const MY_LIFF_ID = "2009070223-6etDkSk2"; // LIFF ID ของคุณ
+        const PROMPTPAY_ID = "0970100515"; // ✅ แก้เป็นเบอร์คุณพรพิมลแล้ว
 
         let cart = [];
         let userName = "";
         let lineUserId = ""; 
 
+        // --- 🟢 เริ่มต้น LIFF ---
         async function initLIFF() {
-            await liff.init({ liffId: MY_LIFF_ID });
-            if (liff.isLoggedIn()) {
-                const profile = await liff.getProfile();
-                userName = profile.displayName;
-                lineUserId = profile.userId; 
-                document.getElementById('user-name').innerText = userName;
-            } else {
-                liff.login();
+            try {
+                await liff.init({ liffId: MY_LIFF_ID });
+                if (liff.isLoggedIn()) {
+                    const profile = await liff.getProfile();
+                    userName = profile.displayName;
+                    lineUserId = profile.userId; 
+                    document.getElementById('user-name').innerText = userName;
+                } else {
+                    liff.login();
+                }
+            } catch (err) {
+                console.error("LIFF Init Error:", err);
             }
         }
         initLIFF();
 
+        // --- 🛒 จัดการตะกร้าสินค้า ---
         function addToCart(name, price) {
             let item = cart.find(i => i.name === name);
             if (item) { item.qty++; } else { cart.push({ name, price, qty: 1 }); }
@@ -137,7 +144,7 @@
         function updateCartIcon() { document.getElementById('count').innerText = cart.reduce((s, i) => s + i.qty, 0); }
         function closeCart() { document.getElementById('cart-modal').style.display = "none"; }
 
-        // ✅ ฟังก์ชันใหม่: ชำระเงิน -> แสดง QR -> ส่งข้อมูล
+        // --- 💰 ฟังก์ชันชำระเงินและส่งข้อมูล ---
         async function processPayment() {
             const addr = document.getElementById('address').value;
             const totalAmount = document.getElementById('total').innerText;
@@ -145,37 +152,39 @@
             if (!addr) return Swal.fire({ icon: 'warning', title: 'แจ้งเตือน', text: 'กรุณากรอกที่อยู่ด้วยค่ะ', confirmButtonColor: '#ff9800' });
             if (cart.length === 0) return Swal.fire({ icon: 'warning', title: 'ตะกร้าว่าง', text: 'เลือกขนมก่อนนะคะ', confirmButtonColor: '#ff9800' });
 
-            // สร้างเลข Order ID
+            // สร้างเลข Order ID (สุ่มเลข 6 หลัก)
             const orderId = '#' + Math.floor(100000 + Math.random() * 900000);
             
-            // สร้างลิงก์ QR Code อัตโนมัติ
+            // ✅ สร้างลิงก์ QR Code (PromptPay) แบบมียอดเงิน
             const qrUrl = `https://promptpay.io/${PROMPTPAY_ID}/${totalAmount}`;
 
-            // 1. แสดง QR Code ให้ลูกค้าสแกน
+            // 1. แสดง QR Code ให้ลูกค้าสแกนจ่าย
             const payment = await Swal.fire({
                 title: 'สแกนจ่ายเงิน',
                 html: `
-                    <div style="background:#f9f9f9; padding:10px; border-radius:10px;">
-                        <h2 style="color:#ff9800; margin:0;">฿ ${totalAmount}</h2>
-                        <small>เลขคำสั่งซื้อ : ${orderId}</small>
+                    <div style="background:#fdf5f0; padding:15px; border-radius:12px; border:1px solid #ffcc80;">
+                        <h2 style="color:#ff9800; margin:0; font-size:32px;">฿ ${totalAmount}</h2>
+                        <small style="color:#888;">เลขคำสั่งซื้อ : ${orderId}</small>
                     </div>
-                    <img src="${qrUrl}" style="width:200px; margin:15px 0; border:1px solid #ddd; border-radius:5px;">
-                    <p>พร้อมเพย์ : <b>${PROMPTPAY_ID}</b></p>
-                    <hr>
-                    <p style="font-size:14px; color:gray;">เมื่อโอนเงินเสร็จแล้ว<br>กดปุ่มด้านล่างเพื่อยืนยันและส่งสลิป</p>
+                    <img src="${qrUrl}" style="width:200px; margin:20px 0; border:2px solid #eee; border-radius:10px; padding:5px;">
+                    <p style="font-size:16px;">พร้อมเพย์ : <b>${PROMPTPAY_ID}</b></p>
+                    <p style="color:#666;">(คุณพรพิมล)</p>
+                    <hr style="margin: 15px 0;">
+                    <p style="font-size:14px; color:#c62828;">*เมื่อโอนเงินเสร็จแล้ว กดปุ่มด้านล่างเพื่อส่งสลิป*</p>
                 `,
                 showCancelButton: true,
                 confirmButtonText: '✅ โอนแล้ว (แจ้งสลิป)',
                 cancelButtonText: 'ยกเลิก',
                 confirmButtonColor: '#4caf50',
                 cancelButtonColor: '#d33',
-                allowOutsideClick: false
+                allowOutsideClick: false,
+                width: 350
             });
 
-            // ถ้ากดยกเลิก
+            // ถ้าลูกค้ากดยกเลิก
             if (!payment.isConfirmed) return;
 
-            // 2. ส่งข้อมูลไป Make (บันทึก Google Sheet)
+            // 2. ถ้าลูกค้ากด "โอนแล้ว" -> ส่งข้อมูลไป Make
             Swal.fire({ title: 'กำลังบันทึกข้อมูล...', allowOutsideClick: false, didOpen: () => { Swal.showLoading() } });
 
             const orderData = {
@@ -188,24 +197,32 @@
             };
 
             try {
+                // ยิง Webhook ไปที่ Make
                 const res = await fetch(WEBHOOK_URL, {
                     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(orderData)
                 });
 
                 if (res.ok) {
-                    // 3. สำเร็จ! แจ้งให้ลูกค้าส่งรูปสลิป
-                    Swal.fire({
-                        title: 'บันทึกออเดอร์แล้ว!',
-                        html: 'ขั้นตอนสุดท้าย : <br><b>กรุณาส่งรูปสลิปเข้ามาในแชท</b><br>เพื่อให้ระบบตรวจสอบยอดเงินนะคะ',
+                    // 3. สำเร็จ! แจ้งเตือนลูกค้าให้ส่งรูปสลิปในแชท
+                    await Swal.fire({
+                        title: 'บันทึกออเดอร์แล้ว! 🎉',
+                        html: `
+                            <div style="font-size:16px;">
+                                ขอบคุณที่สั่งซื้อนะคะ 🙏<br><br>
+                                <b>ขั้นตอนสุดท้าย :</b><br>
+                                กรุณากดปุ่มด้านล่างเพื่อกลับไปที่แชท<br>
+                                และ <b>ส่งรูปสลิป</b> เพื่อให้บอทตรวจสอบยอดเงินค่ะ
+                            </div>
+                        `,
                         icon: 'success',
-                        confirmButtonText: '📷 กดส่งสลิปเลย',
+                        confirmButtonText: '📷 กดเพื่อกลับไปส่งสลิป',
                         confirmButtonColor: '#4caf50'
-                    }).then(() => {
-                        // ปิดหน้าเว็บ และเปิดห้องแชทเพื่อให้ส่งรูป
-                        liff.closeWindow(); 
                     });
+                    
+                    // ปิดหน้าเว็บ LIFF
+                    liff.closeWindow(); 
                 } else {
-                    Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'ส่งข้อมูลไม่สำเร็จ' });
+                    Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'ส่งข้อมูลไม่สำเร็จ กรุณาลองใหม่' });
                 }
             } catch (err) {
                 Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'เชื่อมต่อไม่ได้: ' + err });
