@@ -14,8 +14,17 @@
         .item-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
         button { cursor: pointer; border-radius: 5px; border: 1px solid #ddd; padding: 5px 12px; }
         #checkout-btn { background: #4caf50; color: white; border: none; padding: 15px; width: 100%; font-size: 18px; border-radius: 10px; margin-top: 20px; }
-        /* เพิ่มสไตล์ปุ่มลบสีแดง */
-        .del-btn { background-color: #ff5757; color: white; border: none; margin-left: 5px; }
+        
+        /* ✅ แก้ไขสไตล์ปุ่มลบ ให้เป็นสีพาสเทลนวลๆ */
+        .del-btn { 
+            background-color: #ffebee; /* พื้นหลังชมพูจาง */
+            color: #c62828;            /* ตัวหนังสือแดงเข้ม */
+            border: 1px solid #ffcdd2; /* ขอบชมพู */
+            border-radius: 15px;       /* ขอบมน */
+            padding: 2px 10px;         /* ขนาดกระทัดรัด */
+            margin-left: 5px; 
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
@@ -93,7 +102,7 @@
                             <button onclick="updateQty(${idx}, -1)">-</button>
                             <span style="margin:0 5px;">${item.qty}</span>
                             <button onclick="updateQty(${idx}, 1)">+</button>
-                            <button class="del-btn" onclick="removeItem(${idx})">🗑️</button>
+                            <button class="del-btn" onclick="removeItem(${idx})">ลบ</button>
                         </div>
                     </div>`;
             });
@@ -108,23 +117,21 @@
             updateCartIcon();
         }
 
-        // ฟังก์ชันใหม่: ลบสินค้าทันที
         function removeItem(idx) {
-            // ถามก่อนลบ เพื่อกันพลาด
             Swal.fire({
                 title: 'ลบรายการนี้?',
-                text: "คุณต้องการลบ " + cart[idx].name + " ออกจากตะกร้าใช่ไหม?",
+                text: "ต้องการลบ " + cart[idx].name + " ออกจากตะกร้า?",
                 icon: 'warning',
                 showCancelButton: true,
-                confirmButtonColor: '#ff5252',
+                confirmButtonColor: '#ff8a80', // ปรับสีปุ่มยืนยันให้เข้าธีม
                 cancelButtonColor: '#aaa',
                 confirmButtonText: 'ลบเลย',
                 cancelButtonText: 'ยกเลิก'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    cart.splice(idx, 1); // ลบออกจาก Array
-                    showCart(); // อัปเดตหน้าจอ
-                    updateCartIcon(); // อัปเดตตัวเลข
+                    cart.splice(idx, 1); 
+                    showCart(); 
+                    updateCartIcon(); 
                 }
             });
         }
