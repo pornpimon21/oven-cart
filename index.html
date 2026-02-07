@@ -43,20 +43,22 @@
     </div>
 
     <script>
-        // 1. ใส่ URL จาก Make (วงกลมชมพู) ของคุณที่นี่
+        // 1. URL Webhook เดิมของคุณ
         const WEBHOOK_URL = "https://hook.eu1.make.com/qq81k3lxscdq67yy5y7soxmvt7d6wl3d"; 
         
-        // 2. ใส่ LIFF ID ของคุณที่นี่
+        // 2. LIFF ID เดิมของคุณ
         const MY_LIFF_ID = "2009070223-6etDkSk2";
 
         let cart = [];
         let userName = "";
+        let lineUserId = ""; // เพิ่มตัวแปรเก็บ ID
 
         async function initLIFF() {
             await liff.init({ liffId: MY_LIFF_ID });
             if (liff.isLoggedIn()) {
                 const profile = await liff.getProfile();
                 userName = profile.displayName;
+                lineUserId = profile.userId; // ดึง userId มาเก็บไว้
                 document.getElementById('user-name').innerText = userName;
             } else {
                 liff.login();
@@ -105,6 +107,7 @@
 
             const orderData = {
                 customer: userName,
+                userId: lineUserId, // ส่ง userId ไปที่ Make แล้ว!
                 items: cart.map(i => `${i.name}(${i.qty})`).join(", "),
                 total: document.getElementById('total').innerText,
                 address: addr
